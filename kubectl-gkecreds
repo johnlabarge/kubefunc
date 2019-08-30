@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+HELP="Obtain GKE credentials from list of clusters\n\
+Lists all GKE clusters in current project. \n\
+Runs 'gcloud container clusters get-credentials' for selected cluster.\n\
+Works with zonal and regional clusters.\n\
+Example:\n
+  kubectl gkecreds
+"
+if [[ "$1" == "help" || "$1" == "-h" ]]
+then
+  echo -e $HELP
+  exit 0
+fi
+
+function _gke_select_cluster() {
+  IFS=';' read -ra clusters <<< "$(gcloud container clusters list --uri | sort -k9 -t/ | tr '\n' ';')"
+  local count=1
+  for i in ${clusters[@]}; do
+    IFS="/" read -ra TOKS <<< "${i}"
+    echo "  $count) ${TOKS[-1]} (${TOKS[-3]})" >&2
+    ((count=count+1))
+  done
+  local sel=0
+  while [[ $sel -lt 1 || $sel -ge $count ]]; do
+    read -p "Select a GKE cluster: " sel >&2
+  done
+  echo "${clusters[(sel-1)]}"
+}
+
+function gke-credentials() {
+  cluster=$(_gke_select_cluster)
+  if [[ "${cluster}" =~ zones ]]; then
+    gcloud container clusters get-credentials ${cluster}
+  else
+    export CLOUDSDK_CONTAINER_USE_V1_API_CLIENT=false
+    IFS="/" read -ra TOKS <<< "${cluster}"
+    REGION=${TOKS[-3]}
+    CLUSTER_NAME=${TOKS[-1]}
+    gcloud beta container clusters get-credentials ${CLUSTER_NAME} --region ${REGION}
+  fi
+}
+
+gke-credentials

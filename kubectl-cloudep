@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+HELP="Install the Cloud Endpoints Controller
+Installs metacontroller and cloud-endpoints-controller into the metacontroller namespace.\n\
+Cloud Endpoints Controller is used to provision Cloud Endpoints services using a CRD.\n\
+The CloudEndpoint resource can be bound to an Ingress object and automatically rollout updates when the Ingress external IP changes.\n\
+More examples and tutorial at found at https://github.com/danisla/cloud-endpoints-controller/blob/master/README.md\n\
+Example:\n
+  kubectl plugin install-cloud-endpoints-controller
+"
+if [[ "$1" == "help" || "$1" == "-h" ]]
+then
+  echo -e $HELP
+  exit 0
+fi
+
+function install-cloud-endpoints-controller() {
+  # Install metacontroller
+  kubectl create clusterrolebinding ${USER}-cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud config get-value account)
+
+	kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/metacontroller/master/manifests/metacontroller-rbac.yaml
+	kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/metacontroller/master/manifests/metacontroller.yaml
+
+  
+  # Install cloud endpoints controller
+  kubectl apply -f https://raw.githubusercontent.com/danisla/cloud-endpoints-controller/master/manifests/cloud-endpoints-controller-rbac.yaml
+  kubectl apply -f https://raw.githubusercontent.com/danisla/cloud-endpoints-controller/master/manifests/cloud-endpoints-controller.yaml
+}
+
+install-cloud-endpoints-controller
